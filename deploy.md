@@ -117,13 +117,14 @@ The app is now running on port 3000 internally. Continue to step 6 to expose it 
 apt install -y nginx
 ```
 
-Create the site config. Replace `_` with your domain if you have one:
+Create the site config. If you plan to use HTTPS, set `server_name` to your
+exact domain. Use `_` only for an IP-only HTTP deployment.
 
 ```bash
 cat > /etc/nginx/sites-available/ollive << 'EOF'
 server {
     listen 80;
-    server_name _;
+    server_name yourdomain.com;
 
     location / {
         proxy_pass         http://localhost:3000;
@@ -155,7 +156,15 @@ The app is now accessible at `http://YOUR_SERVER_IP`.
 
 ## 7. HTTPS with Let's Encrypt (requires a domain)
 
-Point your domain's DNS A record to the server IP, wait for it to propagate, then run:
+Point your domain's DNS A record to the server IP, wait for it to propagate,
+and make sure `/etc/nginx/sites-available/ollive` has a matching
+`server_name`:
+
+```nginx
+server_name yourdomain.com;
+```
+
+Then run:
 
 ```bash
 apt install -y certbot python3-certbot-nginx
@@ -163,6 +172,16 @@ certbot --nginx -d yourdomain.com
 ```
 
 Certbot will automatically update the Nginx config to serve HTTPS and redirect HTTP to HTTPS.
+
+If Certbot successfully receives the certificate but cannot install it because
+it cannot find a matching server block, fix `server_name`, reload Nginx, then
+install the already-issued certificate:
+
+```bash
+sed -i 's/server_name _;/server_name yourdomain.com;/' /etc/nginx/sites-available/ollive
+nginx -t && systemctl reload nginx
+certbot install --cert-name yourdomain.com
+```
 
 Test auto-renewal:
 
