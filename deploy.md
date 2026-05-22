@@ -10,9 +10,39 @@
 
 ## 1. Install Docker
 
+On Ubuntu 24.04/Noble, the Compose v2 package from the Ubuntu repositories is
+usually named `docker-compose-v2`, not `docker-compose-plugin`.
+
 ```bash
-apt update && apt install -y docker.io docker-compose-plugin
+apt update
+apt install -y docker.io docker-compose-v2 docker-buildx
 systemctl enable --now docker
+
+docker --version
+docker compose version
+docker buildx version
+```
+
+If `docker-compose-v2` is unavailable, install Docker from Docker's official
+repository instead:
+
+```bash
+apt install -y ca-certificates curl gnupg
+
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+. /etc/os-release
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+
+docker --version
+docker compose version
+docker buildx version
 ```
 
 ---
@@ -67,6 +97,14 @@ Check that both containers are healthy:
 
 ```bash
 docker compose ps
+```
+
+If only the `db` container appears, the app container exited after startup.
+Check stopped containers and the app logs:
+
+```bash
+docker compose ps -a
+docker compose logs --tail=200 app
 ```
 
 The app is now running on port 3000 internally. Continue to step 6 to expose it on port 80.
