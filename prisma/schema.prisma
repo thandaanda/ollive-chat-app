@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConversationStatus {
+  ACTIVE
+  CANCELLED
+  ARCHIVED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum MessageStatus {
+  STREAMING
+  COMPLETE
+  FAILED
+  CANCELLED
+}
+
+enum InferenceEventType {
+  STARTED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum InferenceStatus {
+  STARTED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Conversation {
+  id        String             @id @default(cuid())
+  title     String
+  status    ConversationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  messages  ChatMessage[]
+  logs      InferenceLog[]
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model ChatMessage {
+  id             String        @id @default(cuid())
+  conversationId String
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String        @db.Text
+  provider       String?
+  model          String?
+  requestId      String?
+  status         MessageStatus @default(COMPLETE)
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([conversationId, createdAt])
+  @@index([requestId])
+}
+
+model InferenceEvent {
+  id             String             @id @default(cuid())
+  eventId        String             @unique
+  requestId      String
+  eventType      InferenceEventType
+  provider       String
+  model          String
+  conversationId String?
+  messageId      String?
+  latencyMs      Int?
+  promptTokens   Int?
+  completionTokens Int?
+  totalTokens    Int?
+  inputPreview   String?            @db.Text
+  outputPreview  String?            @db.Text
+  errorType      String?
+  errorMessage   String?            @db.Text
+  occurredAt     DateTime
+  raw            Json
+  createdAt      DateTime           @default(now())
+
+  @@index([requestId])
+  @@index([eventType, occurredAt])
+  @@index([provider, model])
+}
+
+model InferenceLog {
+  id               String          @id @default(cuid())
+  requestId        String          @unique
+  provider         String
+  model            String
+  status           InferenceStatus @default(STARTED)
+  conversationId   String?
+  conversation     Conversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  messageId        String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  latencyMs        Int?
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  inputPreview     String?         @db.Text
+  outputPreview    String?         @db.Text
+  errorType        String?
+  errorMessage     String?         @db.Text
+  metadata         Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([provider, model])
+  @@index([conversationId])
+}

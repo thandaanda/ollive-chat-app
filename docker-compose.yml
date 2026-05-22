@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ollive
+      POSTGRES_PASSWORD: ollive
+      POSTGRES_DB: ollive_ai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollive -d ollive_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ollive:ollive@db:5432/ollive_ai
+      APP_URL: http://localhost:3000
+      INGESTION_API_KEY: ${INGESTION_API_KEY:-dev-ingestion-token}
+      # Optional server fallback. Browser-entered keys from the UI take precedence.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODELS: ${OPENAI_MODELS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODELS: ${ANTHROPIC_MODELS:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELS: ${GEMINI_MODELS:-}
+    ports:
+      - "3000:3000"
+    command: sh -c "pnpm prisma db push && pnpm start"
+
+volumes:
+  postgres-data:
